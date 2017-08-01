@@ -1,6 +1,7 @@
 package main
 
 import (
+    "encoding/json"
     "fmt"
     "os"
     "strings"
@@ -25,6 +26,10 @@ var (
     findCmd = app.Command("find", "Find a single path and exit.")
     sourceArg = findCmd.Arg("source", "Wikipedia article to start from. Can be an article name or URL.").Required().String()
     targetArg = findCmd.Arg("target", "Wikipedia article to look for. Can be an article name or URL.").Required().String()
+    formatArg = findCmd.
+        Flag("format", "Display output in human-friendly way (--format=human) or as JSON (--format=json).").
+        Default("human").
+        Enum("human", "json")
 
     serveCmd = app.Command("serve", "Start a RESTful server for finding paths.")
 )
@@ -38,13 +43,23 @@ func main() {
 
     switch kingpin.MustParse(app.Parse(os.Args[1:])) {
         case findCmd.FullCommand():
-            fmt.Println(searchLinkPath(wikiClient, *sourceArg, *targetArg))
+            result := searchLinkPath(wikiClient, *sourceArg, *targetArg)
+            if *formatArg == "human" {
+                fmt.Println(linkPathToString(result))
+            } else {
+                resultJson, err := json.Marshal(result)
+                if err != nil {
+                    panic(err)
+                }
+
+                fmt.Println(string(resultJson))
+            }
         case serveCmd.FullCommand():
             fmt.Println("Serve")
     }
 }
 
-func searchLinkPath(wikiClient *mwclient.Client, source, target string) string {
+func searchLinkPath(wikiClient *mwclient.Client, source, target string) []string {
     // maps each article to an article that links to it
     reverseHops := make(map[string]string)
     toExplore := []string{source}
@@ -68,7 +83,7 @@ func searchLinkPath(wikiClient *mwclient.Client, source, target string) string {
         }
     }
 
-    return "No solution found"
+    return nil
 }
 
 func getLinks(wikiClient *mwclient.Client, titles []string) []WikiHop {
@@ -126,19 +141,31 @@ func getLinks(wikiClient *mwclient.Client, titles []string) []WikiHop {
     return result
 }
 
-func solutionPath(reverseHops map[string]string, source string, target string) string {
-    if source == target {
-        return target
-    } else {
-        previous := reverseHops[target]
-        return fmt.Sprintf("%s -> %s", solutionPath(reverseHops, source, previous), target)
-    }
-}
-
 func min(a, b int) int {
     if a > b {
         return b
     } else {
         return a
+    }
+}
+
+func solutionPath(reverseHops map[string]string, source string, target string) []string {
+    if source == target {
+        return []string{target}
+    } else {
+        previous := reverseHops[target]
+        return append(solutionPath(reverseHops, source, previous), target)
+    }
+}
+
+func linkPathToString(path []string) string {
+    if path == nil {
+        return "No path found."
+    } else {
+        result := path[0]
+        for _, hop := range path[1:] {
+            result = fmt.Sprintf("%s -> %s", result, hop)
+        }
+        return result
     }
 }
