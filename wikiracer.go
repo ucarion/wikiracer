@@ -100,7 +100,7 @@ func getLinks(wikiClient *mwclient.Client, titles []string) []WikiHop {
         "plnamespace": "0",
     }
 
-    result := make([]WikiHop, 0)
+    result := []WikiHop{}
 
     query := wikiClient.NewQuery(queryValues)
     for query.Next() {
