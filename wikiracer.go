@@ -92,12 +92,12 @@ func getLinks(wikiClient *mwclient.Client, titles []string) []WikiHop {
     queryValues := params.Values{
         "titles": strings.Join(titles, "|"),
         "prop":   "links",
+        "pllimit": "500",
 
         // Wikimedia has a concept of a "namespace", which distinguishes
         // articles like "Apple", "User:Apple", "Category:Fruits", etc. For our
         // purposes, only namespace 0, corresponding to articles, is relevant.
         "plnamespace": "0",
-        "pllimit": "500",
     }
 
     result := make([]WikiHop, 0)
