@@ -90,6 +90,7 @@ func getLinks(wikiClient *mwclient.Client, titles []string) []WikiHop {
     queryValues := params.Values{
         "titles": strings.Join(titles, "|"),
         "prop":   "links",
+
         // Wikimedia has a concept of a "namespace", which distinguishes
         // articles like "Apple", "User:Apple", "Category:Fruits", etc. For our
         // purposes, only namespace 0, corresponding to articles, is relevant.
@@ -102,8 +103,8 @@ func getLinks(wikiClient *mwclient.Client, titles []string) []WikiHop {
     query := wikiClient.NewQuery(queryValues)
     for query.Next() {
         response := query.Resp()
-        resultPages, err := response.GetObjectArray("query", "pages")
 
+        resultPages, err := response.GetObjectArray("query", "pages")
         if err != nil {
             panic(err)
         }
@@ -114,8 +115,12 @@ func getLinks(wikiClient *mwclient.Client, titles []string) []WikiHop {
                 panic(err)
             }
 
-            // if there are multiple titles, not all pages will have links for
-            // every title
+            // Each "page" corresponds to one of the titles given to Wikimedia,
+            // and every response Wikimedia returns will contain a page for each
+            // title.
+            //
+            // Some of these pages will not have any links in them, because all
+            // the links are in other pages in this response.
             if _, ok := resultPage.Map()["links"]; ok {
                 links, err := resultPage.GetObjectArray("links")
                 if err != nil {
