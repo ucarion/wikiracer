@@ -60,6 +60,8 @@ func main() {
 }
 
 func searchLinkPath(wikiClient *mwclient.Client, source, target string) []string {
+    // TODO normalize before searching
+
     // maps each article to an article that links to it
     reverseHops := make(map[string]string)
     toExplore := []string{source}
