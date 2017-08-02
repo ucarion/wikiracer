@@ -31,7 +31,12 @@ var (
 func main() {
     switch kingpin.MustParse(app.Parse(os.Args[1:])) {
         case findCmd.FullCommand():
-            result := wikipath.Search(*sourceArg, *targetArg)
+            result, err := wikipath.Search(*sourceArg, *targetArg)
+
+            if err != nil {
+                fmt.Println("Error:", err)
+                os.Exit(1)
+            }
 
             if *formatArg == "human" {
                 fmt.Println(linkPathToString(result))
@@ -54,7 +59,19 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    result := wikipath.Search(source[0], target[0])
+    result, err := wikipath.Search(source[0], target[0])
+
+    if err != nil {
+        errorMessage := fmt.Sprintf("Error: %s", err)
+        errorMessageJson, err := json.Marshal(errorMessage)
+        if err != nil {
+            panic(err)
+        }
+
+        fmt.Fprintf(w, string(errorMessageJson))
+        return
+    }
+
     fmt.Fprintf(w, linkPathToJson(result))
 }
 

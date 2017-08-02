@@ -3,9 +3,12 @@ package wikipath
 import (
     "cgt.name/pkg/go-mwclient"
     "cgt.name/pkg/go-mwclient/params"
+    "errors"
+    "fmt"
     "github.com/antonholmquist/jason"
     "github.com/deckarep/golang-set"
     "log"
+    "regexp"
     "sync"
     "time"
 )
@@ -178,4 +181,48 @@ func queryParams(title string, forward bool) params.Values {
             "blnamespace": "0",
         }
     }
+}
+
+// Handles converting from Wikipedia URLs to article names, and basic
+// normalization through the API.
+func normalizeArticle(article string) (string, error) {
+    // https://en.wikipedia.org/wiki/Albert_Einstein
+    r := regexp.MustCompile("\\A(http|https)?(://)?en.wikipedia.org/wiki/(.*)\\z")
+
+    articleName := article
+    if r.MatchString(article) {
+        submatches := r.FindStringSubmatch(article)
+        articleName = submatches[len(submatches) - 1]
+    }
+
+    infoQuery := wikiClient.NewQuery(params.Values {
+        "prop": "info",
+        "titles": articleName,
+        "inprop": "",
+    })
+
+    infoQuery.Next()
+    if infoQuery.Err() != nil {
+        panic(infoQuery.Err())
+    }
+
+    responsePages, err := infoQuery.Resp().GetObjectArray("query", "pages")
+    if err != nil {
+        panic(err)
+    }
+
+    articleInfo := responsePages[0].Map()
+    _, isMissing := articleInfo["missing"]
+
+    if isMissing {
+        errorMessage := fmt.Sprintf("Not a valid Wikipedia article: %s", article)
+        return "", errors.New(errorMessage)
+    }
+
+    normalizedName, err := articleInfo["title"].String()
+    if err != nil {
+        panic(err)
+    }
+
+    return normalizedName, nil
 }

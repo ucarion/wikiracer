@@ -2,9 +2,20 @@ package wikipath
 
 import "log"
 
-func Search(source, target string) []string {
+func Search(source, target string) ([]string, error) {
     done := make(chan struct{})
     defer close(done)
+
+    var err error
+    source, err = normalizeArticle(source)
+    if err != nil {
+        return nil, err
+    }
+
+    target, err = normalizeArticle(target)
+    if err != nil {
+        return nil, err
+    }
 
     // reverse links from articles toward articles "closer" to source
     towardSource := make(map[string]string)
@@ -27,7 +38,7 @@ func Search(source, target string) []string {
 
             // see if a path from toArticle to target is known
             if _, ok := towardTarget[hop.toArticle]; ok {
-                return solutionPath(towardSource, towardTarget, source, target, hop.toArticle)
+                return solutionPath(towardSource, towardTarget, source, target, hop.toArticle), nil
             }
         } else {
             // if not yet known, add info about path toward target
@@ -37,12 +48,12 @@ func Search(source, target string) []string {
 
             // see if a path from fromArticle to source is known
             if _, ok := towardSource[hop.fromArticle]; ok {
-                return solutionPath(towardSource, towardTarget, source, target, hop.fromArticle)
+                return solutionPath(towardSource, towardTarget, source, target, hop.fromArticle), nil
             }
         }
     }
 
-    return nil
+    return nil, nil
 }
 
 // merge both streams, and close the output as once either input closes
