@@ -5,7 +5,6 @@ import (
     "fmt"
     "os"
 
-    "cgt.name/pkg/go-mwclient"
     "gopkg.in/alecthomas/kingpin.v2"
     "github.com/ucarion/wikiracer/wikipath"
 )
@@ -29,28 +28,29 @@ var (
 )
 
 func main() {
-    wikiClient, err := mwclient.New("https://en.wikipedia.org/w/api.php", "Wikiracer")
-
-    if err != nil {
-        panic(err)
-    }
+    pool := wikipath.NewExplorerPool()
 
     switch kingpin.MustParse(app.Parse(os.Args[1:])) {
         case findCmd.FullCommand():
-            result := wikipath.Search(wikiClient, *sourceArg, *targetArg)
+            result := wikipath.Search(&pool, *sourceArg, *targetArg)
+
             if *formatArg == "human" {
                 fmt.Println(linkPathToString(result))
             } else {
-                resultJson, err := json.Marshal(result)
-                if err != nil {
-                    panic(err)
-                }
-
-                fmt.Println(string(resultJson))
+                fmt.Println(linkPathToJson(result))
             }
         case serveCmd.FullCommand():
             fmt.Println("Serve")
     }
+}
+
+func linkPathToJson(path []string) string {
+    pathJson, err := json.Marshal(path)
+    if err != nil {
+        panic(err)
+    }
+
+    return string(pathJson)
 }
 
 func linkPathToString(path []string) string {
