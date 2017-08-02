@@ -10,10 +10,6 @@ import (
     "os"
 )
 
-// Send any more titles in the query than this, and Wikimedia will refuse the
-// request
-const MAX_TITLES int = 50
-
 var (
     app = kingpin.New("wikiracer", "A tool for quickly finding link paths from one Wikipedia article to another.")
 
