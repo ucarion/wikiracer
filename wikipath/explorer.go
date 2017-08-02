@@ -3,6 +3,7 @@ package wikipath
 import (
     "fmt"
     "sync"
+    "time"
 
     "cgt.name/pkg/go-mwclient"
     "cgt.name/pkg/go-mwclient/params"
@@ -22,8 +23,8 @@ type Hop struct {
 func Explore(done <-chan struct{}, source string) <-chan Hop {
     out := make(chan Hop)
     visited := mapset.NewSet()
-
     waitGroup := sync.WaitGroup{}
+    throttle := time.Tick(time.Second / 10)
 
     var exploreArticle func(string)
     exploreArticle = func(article string) {
@@ -35,7 +36,7 @@ func Explore(done <-chan struct{}, source string) <-chan Hop {
 
         visited.Add(article)
         fmt.Printf("Exploring: %s\n", article)
-        for hop := range getLinks(article) {
+        for hop := range getLinks(article, throttle) {
             out <- hop
 
             waitGroup.Add(1)
@@ -67,7 +68,7 @@ func init() {
 // Wikipedia gives these articles when following redirects
 var BLACKLIST mapset.Set = mapset.NewSetFromSlice([]interface{}{"H:L", "H:S"})
 
-func getLinks(title string) <-chan Hop {
+func getLinks(title string, throttle <-chan time.Time) <-chan Hop {
     out := make(chan Hop)
 
     go func() {
@@ -83,7 +84,13 @@ func getLinks(title string) <-chan Hop {
         }
 
         query := wikiClient.NewQuery(queryValues)
-        for query.Next() {
+
+        throttledNext := func() bool {
+            <-throttle
+            return query.Next()
+        }
+
+        for throttledNext() {
             response := query.Resp()
 
             resultPages, err := response.GetObjectArray("query", "pages")
