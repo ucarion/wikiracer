@@ -1,12 +1,15 @@
 package wikipath
 
-// import "fmt"
+import "fmt"
 // import "encoding/json"
 
-func Search(pool *ExplorerPool, source, target string) []string {
+func Search(source, target string) []string {
+    done := make(chan struct{})
     towardSource := make(map[string]string)
 
-    for hop := range(pool.Explore(source)) {
+    fmt.Println("Starting search ...");
+
+    for hop := range(Explore(done, source)) {
         towardSource[hop.toArticle] = hop.fromArticle
 
         if hop.toArticle == target {

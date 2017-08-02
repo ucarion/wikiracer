@@ -28,11 +28,9 @@ var (
 )
 
 func main() {
-    pool := wikipath.NewExplorerPool()
-
     switch kingpin.MustParse(app.Parse(os.Args[1:])) {
         case findCmd.FullCommand():
-            result := wikipath.Search(&pool, *sourceArg, *targetArg)
+            result := wikipath.Search(*sourceArg, *targetArg)
 
             if *formatArg == "human" {
                 fmt.Println(linkPathToString(result))

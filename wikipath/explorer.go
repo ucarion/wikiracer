@@ -7,26 +7,10 @@ import (
     "cgt.name/pkg/go-mwclient"
     "cgt.name/pkg/go-mwclient/params"
 
-    "github.com/ucarion/wikiracer/syncset"
+    "github.com/deckarep/golang-set"
 )
 
-const NUM_WORKERS_PER_POOL int = 10
-
-type ExplorerPool struct {
-    // workers consume tasks from this pool
-    tasks <-chan ExploreTask
-}
-
-type ExploreTask struct {
-    // article to start exploring from
-    article string
-    // articles already explored
-    explored *syncset.Set
-    // output channel
-    out chan<- Hop
-    // stores number of articles being explored for query
-    waitGroup *sync.WaitGroup
-}
+const NUM_SIMULTANEOUS_QUERIES int = 10
 
 type Hop struct {
     // the link appeared on this article
@@ -35,27 +19,32 @@ type Hop struct {
     toArticle string
 }
 
-// Create pool with workers ready to go
-func NewExplorerPool() ExplorerPool {
-    pool := ExplorerPool{make(chan ExploreTask)}
-
-    for i := 0; i < NUM_WORKERS_PER_POOL; i++ {
-        go func() {
-            for {
-                pool.processTask(<-pool.tasks)
-            }
-        }()
-    }
-
-    return pool
-}
-
-func (pool *ExplorerPool) Explore(article string) <-chan Hop {
-    explored := syncset.New()
+func Explore(done <-chan struct{}, source string) <-chan Hop {
     out := make(chan Hop)
+    visited := mapset.NewSet()
+
     waitGroup := sync.WaitGroup{}
 
-    pool.processTask(ExploreTask{article, &explored, out, &waitGroup})
+    var exploreArticle func(string)
+    exploreArticle = func(article string) {
+        defer waitGroup.Done()
+
+        if visited.Contains(article) {
+            return
+        }
+
+        visited.Add(article)
+        fmt.Printf("Exploring: %s\n", article)
+        for hop := range getLinks(article) {
+            out <- hop
+
+            waitGroup.Add(1)
+            go exploreArticle(hop.toArticle)
+        }
+    }
+
+    waitGroup.Add(1)
+    go exploreArticle(source)
 
     go func() {
         waitGroup.Wait()
@@ -63,25 +52,6 @@ func (pool *ExplorerPool) Explore(article string) <-chan Hop {
     }()
 
     return out
-}
-
-func (pool *ExplorerPool) processTask(task ExploreTask) {
-    fmt.Printf("Process task: %s\n", task.article)
-    if task.explored.Contains(task.article) {
-        return
-    }
-
-    task.explored.Insert(task.article)
-    task.waitGroup.Add(1)
-    go func() {
-        for hop := range getLinks(task.article) {
-            task.out <- hop
-            nextTask := ExploreTask{hop.toArticle, task.explored, task.out, task.waitGroup}
-            pool.processTask(nextTask)
-        }
-
-        task.waitGroup.Done()
-    }()
 }
 
 var wikiClient *mwclient.Client
@@ -93,6 +63,9 @@ func init() {
         panic(err)
     }
 }
+
+// Wikipedia gives these articles when following redirects
+var BLACKLIST mapset.Set = mapset.NewSetFromSlice([]interface{}{"H:L", "H:S"})
 
 func getLinks(title string) <-chan Hop {
     out := make(chan Hop)
@@ -142,7 +115,9 @@ func getLinks(title string) <-chan Hop {
                             panic(err)
                         }
 
-                        out <- Hop{title, linkTitle}
+                        if !BLACKLIST.Contains(linkTitle) {
+                            out <- Hop{title, linkTitle}
+                        }
                     }
                 }
             }
