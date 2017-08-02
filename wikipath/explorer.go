@@ -1,14 +1,13 @@
 package wikipath
 
 import (
-    "fmt"
-    "sync"
-    "time"
-
     "cgt.name/pkg/go-mwclient"
     "cgt.name/pkg/go-mwclient/params"
-    "github.com/deckarep/golang-set"
     "github.com/antonholmquist/jason"
+    "github.com/deckarep/golang-set"
+    "log"
+    "sync"
+    "time"
 )
 
 const NUM_SIMULTANEOUS_QUERIES int = 10
@@ -35,12 +34,11 @@ func Explore(done <-chan struct{}, source string, forward bool) <-chan Hop {
         }
 
         visited.Add(article)
-        fmt.Printf("Exploring: %s\n", article)
-        for hop := range getLinks(article, forward, throttle) {
+        log.Println("Exploring article:", article)
+        for hop := range getLinks(done, article, forward, throttle) {
             select {
             case out <- hop:
             case <-done:
-                fmt.Println("Aborting!")
                 return
             }
 
@@ -77,15 +75,20 @@ func init() {
 // Wikipedia gives these articles when following redirects
 var BLACKLIST mapset.Set = mapset.NewSetFromSlice([]interface{}{"H:L", "H:S"})
 
-func getLinks(title string, forward bool, throttle <-chan time.Time) <-chan Hop {
+func getLinks(done <-chan struct{}, title string, forward bool, throttle <-chan time.Time) <-chan Hop {
     out := make(chan Hop)
 
     go func() {
         query := wikiClient.NewQuery(queryParams(title, forward))
 
         throttledNext := func() bool {
-            <-throttle
-            return query.Next()
+            select {
+            case <-done:
+                return false
+            default:
+                <-throttle
+                return query.Next()
+            }
         }
 
         for throttledNext() {

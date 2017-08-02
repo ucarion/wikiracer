@@ -5,6 +5,7 @@ import (
     "fmt"
     "github.com/ucarion/wikiracer/wikipath"
     "gopkg.in/alecthomas/kingpin.v2"
+    "log"
     "net/http"
     "os"
 )
@@ -39,7 +40,7 @@ func main() {
             }
         case serveCmd.FullCommand():
             http.HandleFunc("/find", httpHandler)
-            http.ListenAndServe(":8080", nil)
+            log.Fatal(http.ListenAndServe(":8080", nil))
     }
 }
 

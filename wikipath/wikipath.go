@@ -1,8 +1,6 @@
 package wikipath
 
-import (
-    "fmt"
-)
+import "log"
 
 func Search(source, target string) []string {
     done := make(chan struct{})
@@ -13,7 +11,7 @@ func Search(source, target string) []string {
     // forward links from articles toward articles "closer" to target
     towardTarget := make(map[string]string)
 
-    fmt.Println("Starting search ...");
+    log.Println("Starting search ...");
     fromSource := Explore(done, source, true)
     fromTarget := Explore(done, target, false)
 
@@ -59,7 +57,6 @@ func merge(fromSource, fromTarget <-chan Hop) <-chan struct{Hop; bool} {
             }
         }
 
-        fmt.Println("One source stopped...")
         stopped = true
         close(out)
     }
