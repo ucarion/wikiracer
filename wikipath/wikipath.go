@@ -1,10 +1,18 @@
 package wikipath
 
-import "log"
+import (
+    "log"
+    "time"
+)
 
 func Search(source, target string) ([]string, error) {
     done := make(chan struct{})
     defer close(done)
+
+    startTime := time.Now()
+    defer func() {
+        log.Println("Search completed in:", time.Since(startTime))
+    }()
 
     var err error
     source, err = normalizeArticle(source)
