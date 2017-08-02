@@ -2,6 +2,7 @@ package wikipath
 
 import (
     "log"
+    "sync"
     "time"
 )
 
@@ -23,6 +24,11 @@ func Search(source, target string) ([]string, error) {
     target, err = normalizeArticle(target)
     if err != nil {
         return nil, err
+    }
+
+    // corner case: source and target article are the same
+    if source == target {
+        return []string{source}, nil
     }
 
     // reverse links from articles toward articles "closer" to source
@@ -67,16 +73,21 @@ func Search(source, target string) ([]string, error) {
 // merge both streams, and close the output as once either input closes
 func merge(fromSource, fromTarget <-chan Hop) <-chan struct{Hop; bool} {
     out := make(chan struct{Hop; bool})
+    stoppedMutex := sync.RWMutex{}
     stopped := false
 
     output := func(c <-chan Hop, isFromSource bool) {
         for hop := range c {
+            stoppedMutex.RLock()
             if !stopped {
                 out <- struct{Hop; bool}{hop, isFromSource}
             }
+            stoppedMutex.RUnlock()
         }
 
+        stoppedMutex.Lock()
         stopped = true
+        stoppedMutex.Unlock()
         close(out)
     }
 
