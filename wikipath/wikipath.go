@@ -4,6 +4,8 @@ import "fmt"
 
 func Search(source, target string) []string {
     done := make(chan struct{})
+    defer close(done)
+
     towardSource := make(map[string]string)
 
     fmt.Println("Starting search ...");

@@ -37,7 +37,12 @@ func Explore(done <-chan struct{}, source string) <-chan Hop {
         visited.Add(article)
         fmt.Printf("Exploring: %s\n", article)
         for hop := range getLinks(article, throttle) {
-            out <- hop
+            select {
+            case out <- hop:
+            case <-done:
+                fmt.Println("Aborting!")
+                return
+            }
 
             waitGroup.Add(1)
             go exploreArticle(hop.toArticle)
