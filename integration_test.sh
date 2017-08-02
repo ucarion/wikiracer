@@ -1,5 +1,6 @@
 #!/bin/bash
 
+go get ./wikiracer
 go install ./wikiracer
 
 bold=$(tput bold)
