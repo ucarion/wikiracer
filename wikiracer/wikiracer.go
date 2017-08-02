@@ -3,10 +3,10 @@ package main
 import (
     "encoding/json"
     "fmt"
-    "os"
-
-    "gopkg.in/alecthomas/kingpin.v2"
     "github.com/ucarion/wikiracer/wikipath"
+    "gopkg.in/alecthomas/kingpin.v2"
+    "net/http"
+    "os"
 )
 
 // Send any more titles in the query than this, and Wikimedia will refuse the
@@ -38,8 +38,23 @@ func main() {
                 fmt.Println(linkPathToJson(result))
             }
         case serveCmd.FullCommand():
-            fmt.Println("Serve")
+            http.HandleFunc("/find", httpHandler)
+            http.ListenAndServe(":8080", nil)
     }
+}
+
+func httpHandler(w http.ResponseWriter, r *http.Request) {
+    params := r.URL.Query()
+    source, target := params["source"], params["target"]
+
+    if source == nil || len(source) != 1 || target == nil || len(target) != 1 {
+        status := http.StatusBadRequest
+        http.Error(w, http.StatusText(status), status)
+        return
+    }
+
+    result := wikipath.Search(source[0], target[0])
+    fmt.Fprintf(w, linkPathToJson(result))
 }
 
 func linkPathToJson(path []string) string {
