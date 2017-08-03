@@ -1,8 +1,13 @@
 # Wikiracer
 
+> [*Per articulis ad astra*](https://en.wikipedia.org/wiki/Per_aspera_ad_astra)
+
+[![asciicast](https://asciinema.org/a/gJiVU8WJeiTMKlVFYriEqMN5D.png)](https://asciinema.org/a/gJiVU8WJeiTMKlVFYriEqMN5D)
+
 `wikiracer` is a tool that quickly finds a way to get between any two Wikipedia
 articles, following only links in the articles. The emphasis is on *speed of
-finding paths*, *not* on producing the shortest path.
+finding paths*, *not* on producing the shortest path. It's also the first Go
+program I've ever written.
 
 ## Examples
 
@@ -41,18 +46,52 @@ $ curl "localhost:8080/find?source=Apple&target=Zimbabwe"
 ["Apple","China","Zimbabwe"]
 ```
 
+### Integration tests
+
+One of the coolest parts of this project is the [integration
+tests](./integration_test.sh). They're written entirely in Bash, and has colored
+output (which I can't copy over to this README). I got this technique of Bash
+integration tests from [a screencast from Gary Bernhardt's *Destroy All
+Software*][das], which I can't recommend highly enough.
+
+[das]: https://www.destroyallsoftware.com/screencasts/catalog/simple-bash-script-testing
+
+```bash
+$ ./integration_test.sh
+Assertion passed: output did equal: No path found.
+Assertion passed: output did equal: null
+Assertion passed: output did equal: Mike Tyson
+Assertion passed: output did equal: ["Mike Tyson"]
+Assertion passed: output did equal: Kevin Bacon -> Erdős number -> Paul Erdős
+Assertion passed: output did equal: ["Kevin Bacon","Erdős number","Paul Erdős"]
+Assertion passed: output did equal: Albert Einstein
+```
+
 ## Testing it yourself with Docker
 
 This project includes a Dockerfile, so you can test it yourself by running:
 
 ```bash
-$ sudo docker build -t ucarion/wikiracer .
-$ sudo docker run -it ucarion/wikiracer
+$ docker build -t ucarion/wikiracer .
+$ docker run -it ucarion/wikiracer
 ```
 
 This will install and run integration tests on `wikiracer`. If you want to test
-it yourself, append `bash` to that `run` command above to override the default
-command, which is `./integration_test.sh`.
+it yourself, run:
+
+```bash
+$ docker build -t ucarion/wikiracer .
+$ docker run -it ucarion/wikiracer bash
+```
+
+Within the container, run:
+
+```
+# go get ./wikiracer
+# go install ./wikiracer
+```
+
+And you're good to go.
 
 ## How it works, and how I got here
 
